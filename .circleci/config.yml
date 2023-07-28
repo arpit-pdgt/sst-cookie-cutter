@@ -1,0 +1,65 @@
+version: 2.1
+
+orbs:
+  aws-cli: circleci/aws-cli@3.1.5
+  node: circleci/node@5.1.0
+
+
+jobs:
+  build_and_deploy:
+    executor: aws-cli/default
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+      
+      - aws-cli/setup
+
+      - run: 
+          name: Copy env file
+          command: |
+        
+            if [ $CIRCLE_BRANCH == "main" ];
+            then
+                DEPLOY_ENVIRONMENT="dev";
+            else
+                DEPLOY_ENVIRONMENT=$CIRCLE_BRANCH;
+            fi
+            aws s3 cp s3://[BUCKET NAME]/environment-variables/${DEPLOY_ENVIRONMENT}/app.env ./.env
+            # Update Bucket Name ^
+
+      - node/install:
+          install-yarn: true
+          node-version: '18.16.0'
+      
+      - run: node --version
+
+      - run:
+          name: Install Dependencies
+          command: npm install
+
+      - run:
+          name: Deploy application
+          command: |
+        
+            if [ $CIRCLE_BRANCH == "main" ];
+            then
+                DEPLOY_ENVIRONMENT="dev";
+            else
+                DEPLOY_ENVIRONMENT=$CIRCLE_BRANCH;
+            fi
+
+            npx sst deploy --stage ${DEPLOY_ENVIRONMENT}
+
+workflows:
+  version: 2.1
+  deploy:
+    jobs:
+      - build_and_deploy:
+          filters:
+            branches:
+              only:
+                - main
+                - demo
+                - prod
